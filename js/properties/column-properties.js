@@ -1,4 +1,4 @@
-var _ = require('lodash');
+'use strict';
 
 class ColumnProperties{
   constructor (columnMetadata = {}, horizontalOffset, tableWidth){
@@ -16,13 +16,13 @@ class ColumnProperties{
     if (metadataKeys.length > 0){
       // Determine the first column visible
       for(var i = 0; i < this.maxColumnLength; i++){
-        var offset = this.leftHiddenColumnWidth + columnMetadata[metadataKeys[i]].columnWidth;
+        var leftOffset = this.leftHiddenColumnWidth + columnMetadata[metadataKeys[i]].columnWidth;
 
-        if (offset >= horizontalOffset){
+        if (leftOffset >= horizontalOffset){
           this.initialDisplayIndex = i;
           break;
         } else {
-          this.leftHiddenColumnWidth = offset;
+          this.leftHiddenColumnWidth = leftOffset;
         }
       }
 
@@ -30,7 +30,7 @@ class ColumnProperties{
       this.initialDisplayIndex = this.initialDisplayIndex - 1;
 
       // If the index is less than zero, set to zero.
-      if (this.initialDisplayIndex < 0) {
+      if (this.initialDisplayIndex < 0){
         this.initialDisplayIndex = 0;
         this.leftHiddenColumnWidth = 0;
       } else {
@@ -39,11 +39,11 @@ class ColumnProperties{
 
       // Determine the last column visible
       var tableOffset = 0;
-      for(var i = this.initialDisplayIndex; i < this.maxColumnLength; i++){
-        var offset = tableOffset + columnMetadata[metadataKeys[i]].columnWidth;
+      for(var j = this.initialDisplayIndex; j < this.maxColumnLength; j++){
+        var offset = tableOffset + columnMetadata[metadataKeys[j]].columnWidth;
 
-        if (offset >= tableWidth || i === this.maxColumnLength - 1){
-          this.lastDisplayIndex = i;
+        if (offset >= tableWidth || j === this.maxColumnLength - 1){
+          this.lastDisplayIndex = j;
           break;
         } else {
           tableOffset = offset;
@@ -59,8 +59,8 @@ class ColumnProperties{
       }
 
       // Compute the width of columns after what's shown.
-      for(var i = this.lastDisplayIndex; i < this.maxColumnLength - 1; i++){
-        this.rightHiddenColumnWidth += columnMetadata[metadataKeys[i]].columnWidth;
+      for(var k = this.lastDisplayIndex; k < this.maxColumnLength - 1; k++){
+        this.rightHiddenColumnWidth += columnMetadata[metadataKeys[k]].columnWidth;
       }
     }
   }
@@ -69,12 +69,30 @@ class ColumnProperties{
     return this.columnMetadata;
   }
 
+  getMetadataForColumn(column){
+    return this.columnMetadata[column];
+  }
+
   getWidthForColumn(column){
-  	return this.columnMetadata[column].columnWidth;
+    return this.columnMetadata[column].columnWidth;
   }
 
   getNameForColumn(column){
     return this.columnMetadata[column].displayName;
+  }
+
+  getLockedForColumn(column){
+    return this.columnMetadata[column].locked;
+  }
+
+  getTotalLockedColumnWidth(){
+    var metadataArray = [];
+    var metadataKeys = Object.keys(this.columnMetadata);
+    for(var i = 0; i < metadataKeys.length; i++){
+      metadataArray.push(this.columnMetadata[metadataKeys[i]]);
+    }
+
+    return metadataArray.filter(m => m.locked).map(m => m.columnWidth).reduce((x, y) => x + y);
   }
 
   getInitialDisplayIndex(){

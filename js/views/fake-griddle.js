@@ -1,3 +1,5 @@
+'use strict';
+
 var React = require('react');
 var DataStore = require('../stores/local-data-store');
 var ScrollStore = require('../stores/scroll-store');
@@ -9,7 +11,6 @@ var SpacerRow = require('./spacer-row');
 var SpacerColumn = require('./spacer-column');
 var DraggableColumn = require('./draggable-column.js');
 var _ = require('lodash');
-var assign = require('object-assign');
 
 function getStateFromStore(gridId){
   return {
@@ -20,7 +21,7 @@ function getStateFromStore(gridId){
     tableWidth: ScrollStore.getTableWidth(gridId),
     rowHeight: ScrollStore.getRowHeight(gridId),
     columnProperties: DataStore.getColumnProperties(gridId),
-    pageProperties: DataStore.getPageProperties(gridId),
+    pageProperties: DataStore.getPageProperties(gridId)
   };
 }
 
@@ -38,9 +39,11 @@ var PageSelect = React.createClass({
     var options = _.map(_.range(this.props.pageProperties.maxPage), function(i){
       return <option key={i} value={i + 1}>{i + 1}</option>;
     });
-    return <select value={this.props.pageProperties.currentPage + 1} onChange={this.handleSelect}>
-      {options}
-    </select>
+    return (
+      <select value={this.props.pageProperties.currentPage + 1} onChange={this.handleSelect}>
+        {options}
+      </select>
+    );
   }
 });
 
@@ -50,13 +53,16 @@ var FakeGriddle = React.createClass({
     if(!this.state.dataState) { return <h1>Nothing</h1>; }
 
     var rows = _.map(this.state.dataState.currentDataPage, function(item){
-      return <tr key={item.id}>
-        <SpacerColumn gridId={that.state.gridId} position="left"/>
-        {_.map(that.state.dataState.currentVisibleColumns, function(key){
-          return <td key={'' + item.id + key}>{item[key]}</td>
-        })}
-        <SpacerColumn gridId={that.state.gridId} position="right"/>
-      </tr>
+      return (
+        <tr key={item.id}>
+          <SpacerColumn gridId={that.state.gridId} position='left'/>
+          {_.map(that.state.dataState.currentVisibleColumns, function(key){
+            var cellStyle = that.getCellStyle(key);
+            return (<td style={cellStyle} key={'' + item.id + key}>{item[key]}</td>);
+          })}
+          <SpacerColumn gridId={that.state.gridId} position='right'/>
+        </tr>
+      );
     });
 
     var columnSection = null;
@@ -64,52 +70,66 @@ var FakeGriddle = React.createClass({
       columnSection = (
         <thead>
           <tr>
-            <SpacerColumn gridId={that.state.gridId} position="left" header={true}/>
+            <SpacerColumn gridId={that.state.gridId} position='left' header={true}/>
             {_.map(this.state.dataState.currentVisibleColumns, function(item){
-              var columnName = that.state.columnProperties.getNameForColumn(item);
-              return <th key={"drag-column-" + columnName} width={that.state.columnProperties.getWidthForColumn(item) + "px"}>
-                <DraggableColumn columnName={that.state.columnProperties.getNameForColumn(item)} column={item} gridId={that.state.gridId} />
-              </th>
+              var cellStyle = that.getCellStyle(item);
+              return (<DraggableColumn columnName={that.state.columnProperties.getNameForColumn(item)} column={item} gridId={that.state.gridId} cellStyle={cellStyle} />);
             })}
-            <SpacerColumn gridId={that.state.gridId} position="right" header={true}/>
+            <SpacerColumn gridId={that.state.gridId} position='right' header={true}/>
           </tr>
         </thead>
       );
     }
 
     var tableWrapperStyle = {
-      "top": this.state.yScrollPosition + "px",
-      "left": this.state.xScrollPosition + "px",
-      "height": this.state.tableHeight + "px",
-      "width": this.state.tableWidth + "px",
-      "overflow": "scroll"
+      'top': this.state.yScrollPosition + 'px',
+      'left': this.state.xScrollPosition + 'px',
+      'height': this.state.tableHeight + 'px',
+      'width': this.state.tableWidth + 'px',
+      'overflow': 'scroll',
+      'marginLeft': this.state.columnProperties.getTotalLockedColumnWidth()
     };
 
     var tableStyle = {
-      tableLayout: "fixed",
-      width: "100%"
+      tableLayout: 'fixed',
+      width: '100%'
     };
 
     return (
       <div>
-      <input type="text" onChange={this.handleFilter} />
-      <input type="text" onChange={this.handleUpdatePageSize} />
-        <div ref="scrollable" onScroll={this.gridScroll} style={tableWrapperStyle}>
+      <input type='text' onChange={this.handleFilter} />
+      <input type='text' onChange={this.handleUpdatePageSize} />
+        <div ref='scrollable' onScroll={this.gridScroll} style={tableWrapperStyle}>
           <table style={tableStyle}>
             {columnSection}
             <tbody>
-              <SpacerRow gridId={this.state.gridId} position="top"/>
+              <SpacerRow gridId={this.state.gridId} position='top'/>
               {rows}
-              <SpacerRow gridId={this.state.gridId} position="bottom"/>
+              <SpacerRow gridId={this.state.gridId} position='bottom'/>
             </tbody>
           </table>
         </div>
 
-        <button type="button" onClick={this.handlePrevious}>Previous</button>
+        <button type='button' onClick={this.handlePrevious}>Previous</button>
         <PageSelect gridId={this.state.gridId} pageProperties={this.state.pageProperties} />
-        <button type="button" onClick={this.handleNext}>Next</button>
+        <button type='button' onClick={this.handleNext}>Next</button>
       </div>
     );
+  },
+
+  getCellStyle: function(column){
+    var columnMetadata = this.state.columnProperties.getMetadataForColumn(column);
+
+    var cellStyle = {};
+    if (columnMetadata.locked) {
+      var width = this.state.columnProperties.getWidthForColumn(column);
+
+      // Set the position,
+      cellStyle.position = 'absolute';
+      cellStyle.width = width + 'px';
+      cellStyle.left = '0';
+    }
+    return cellStyle;
   },
 
   handleFilter: function(e){
@@ -120,11 +140,11 @@ var FakeGriddle = React.createClass({
     LocalActions.setPageSize(this.state.gridId, parseInt(e.target.value));
   },
 
-  handleNext: function(e){
+  handleNext: function(){
     LocalActions.loadNext(this.state.gridId);
   },
 
-  handlePrevious: function(e){
+  handlePrevious: function(){
     LocalActions.loadPrevious(this.state.gridId);
   },
 
@@ -150,7 +170,7 @@ var FakeGriddle = React.createClass({
   },
 
   componentWillMount: function(){
-    var gridId = _.uniqueId("grid");
+    var gridId = _.uniqueId('grid');
     this.setState({gridId: gridId});
 
     LocalActions.initializeGrid(gridId);
@@ -162,7 +182,7 @@ var FakeGriddle = React.createClass({
 
     // Register scroll listener and fire off initial scroll change.
     ScrollStore.addChangeListener(this.scrollChange);
-    
+
     this.scrollChange();
 
     LocalActions.loadData(this.state.gridId, FakeData, FakeMetdata);
@@ -184,7 +204,7 @@ var FakeGriddle = React.createClass({
 
   gridScroll: function(){
     var scrollable = React.findDOMNode(this.refs.scrollable);
-    ScrollActions.setScrollPosition(this.state.gridId, scrollable.scrollLeft, scrollable.scrollWidth, scrollable.scrollTop, scrollable.scrollHeight)
+    ScrollActions.setScrollPosition(this.state.gridId, scrollable.scrollLeft, scrollable.scrollWidth, scrollable.scrollTop, scrollable.scrollHeight);
   }
 });
 

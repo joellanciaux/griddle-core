@@ -1,10 +1,11 @@
+'use strict';
+
 var AppDispatcher = require('../dispatcher/app-dispatcher');
 var assign = require('object-assign');
 var DataHelper = require('../helpers/data-helper');
 var StoreBoilerplate = require('./store-boilerplate');
 var Constants = require('../constants/constants');
 var ScrollStore = require('./scroll-store');
-var LocalActions = require('../actions/local-action-creators');
 var ColumnProperties = require('../properties/column-properties');
 var _ = require('lodash');
 
@@ -18,7 +19,7 @@ var defaultGridState = {
   // this is the filtered, sorted, and paged data
   currentDataPage: [],
 
-  pageProperties: { currentPage: 0, maxPage: 0, pageSize: 5, initialDisplayIndex: 0, lastDisplayIndex: 0, infiniteScroll: true, shouldAutoLoadNextPage: false },
+  pageProperties: { currentPage: 0, maxPage: 0, pageSize: 5, initialDisplayIndex: 0, lastDisplayIndex: 0, infiniteScroll: false, shouldAutoLoadNextPage: false },
 
   // An array of the current visible columns.
   currentVisibleColumns: [],
@@ -55,10 +56,19 @@ var helpers = {
   },
 
   setVisibleColumns: function(gridId){
-    var availableColumns = helpers.getAvailableColumns(gridId);
+    var lockedColumns = helpers.getAvailableColumns(gridId, true);
+    var availableColumns = helpers.getAvailableColumns(gridId, false);
+    var initialIndex = _state[gridId].columnProperties.getInitialDisplayIndex();
+
+    // Insert locked columns at the initial index to ensure they're included in the current visible column list.
+    if (lockedColumns.length > 0){
+      _.forEachRight(lockedColumns, function(element){
+        availableColumns.splice(initialIndex, 0, element);
+      });
+    }
 
     if (availableColumns.length > 0) {
-      _state[gridId].currentVisibleColumns = _.at(availableColumns, _.range(_state[gridId].columnProperties.getInitialDisplayIndex(), _state[gridId].columnProperties.getLastDisplayIndex() + 1));
+      _state[gridId].currentVisibleColumns = _.at(availableColumns, _.range(initialIndex, _state[gridId].columnProperties.getLastDisplayIndex() + 1));
     } else {
       _state[gridId].currentVisibleColumns = [];
     }
@@ -109,7 +119,7 @@ var helpers = {
     this.setCurrentDataPage(gridId);
   },
 
-  sort: function(){
+  sort: function(gridId){
     _state[gridId].visibleData = DataHelper.sort(
       _state[gridId].sortProperties.sortColumns,
       DataStore.getVisibleData(),
@@ -124,15 +134,13 @@ var helpers = {
 
   shouldUpdateDrawnColumns: function(oldColumnProperties, gridId){
     return oldColumnProperties === undefined ||
-           _state[gridId].columnProperties.getInitialDisplayIndex() != oldColumnProperties.getInitialDisplayIndex() ||
-           _state[gridId].columnProperties.getLastDisplayIndex() != oldColumnProperties.getLastDisplayIndex();
+           _state[gridId].columnProperties.getInitialDisplayIndex() !== oldColumnProperties.getInitialDisplayIndex() ||
+           _state[gridId].columnProperties.getLastDisplayIndex() !== oldColumnProperties.getLastDisplayIndex();
   },
 
   updateColumnProperties: function(gridId, columnMetadata){
       // If there isn't any metadata defined, create default metadata based on the available properties.
     if (!columnMetadata && _state[gridId].data && _state[gridId].data.length > 0){
-      // Load the width of the columns.
-      var columnWidth = helpers.getAdjustedColumnWidth(gridId);
 
       var availableDataColumns = Object.keys(_state[gridId].data[0]);
 
@@ -151,20 +159,20 @@ var helpers = {
   },
 
   shouldLoadNewPage: function(gridId){
-    _state[gridId].pageProperties.infiniteScroll &&
-    _state[gridId].pageProperties.lastDisplayIndex !== this.getAllVisibleData(gridId).length &&
-    _state[gridId].pageProperties.currentPage !== _state[gridId].pageProperties.maxPage &&
-    function(){
-        // Determine the diff by subtracting the amount scrolled by the total height, taking into consideratoin
-        // the spacer's height.
-        var scrollHeightDiff = _state[gridId].scrollProperties.yScrollMax - (_state[gridId].scrollProperties.yScrollPosition + _state[gridId].scrollProperties.tableHeight) - _state[gridId].scrollProperties.infiniteScrollLoadTreshold;
+    return _state[gridId].pageProperties.infiniteScroll &&
+           _state[gridId].pageProperties.lastDisplayIndex !== this.getAllVisibleData(gridId).length &&
+           _state[gridId].pageProperties.currentPage !== _state[gridId].pageProperties.maxPage &&
+           function(){
+               // Determine the diff by subtracting the amount scrolled by the total height, taking into consideratoin
+               // the spacer's height.
+               var scrollHeightDiff = _state[gridId].scrollProperties.yScrollMax - (_state[gridId].scrollProperties.yScrollPosition + _state[gridId].scrollProperties.tableHeight) - _state[gridId].scrollProperties.infiniteScrollLoadTreshold;
 
-        // Make sure that we load results a little before reaching the bottom.
-        var compareHeight = scrollHeightDiff * 0.6;
+               // Make sure that we load results a little before reaching the bottom.
+               var compareHeight = scrollHeightDiff * 0.6;
 
-        // Send back whether or not we're under the threshold.
-        return compareHeight <= _state[gridId].scrollProperties.infiniteScrollLoadTreshold;
-    }();
+               // Send back whether or not we're under the threshold.
+               return compareHeight <= _state[gridId].scrollProperties.infiniteScrollLoadTreshold;
+           }();
   },
 
   getAdjustedRowHeight: function(gridId){
@@ -212,19 +220,25 @@ var helpers = {
     }
   },
 
-  getAvailableColumns: function(gridId){
+  getAvailableColumns: function(gridId, locked){
+    if (typeof (locked) === 'undefined'){
+      locked = false;
+    }
+
     var columnMetadata = _state[gridId].columnProperties.getColumnMetadata();
     if (columnMetadata){
         var columnArray = [];
 
         _.forOwn(columnMetadata, function(value, key) {
-          columnArray.push({'key': key, sortOrder: value.sortOrder});
+          if (value.locked === locked){
+            columnArray.push({'key': key, sortOrder: value.sortOrder});
+          }
         });
 
         return _.pluck(_.sortBy(columnArray, 'sortOrder'), 'key');
     } else if (_state[gridId].data){
       // If there's no column metadata, use the keys of the first row in the data.
-      return Object.keys(_state[gridId].data[0]);
+      return _.keys(_state[gridId].data[0]);
     } else {
       // If there's no column metadata OR data, display nothing.
       return [];
@@ -324,7 +338,7 @@ var registeredCallback = function(action){
         break;
       default:
     }
-  }
+  };
 
 
 var DataStore = assign({}, StoreBoilerplate, {
@@ -360,8 +374,5 @@ var DataStore = assign({}, StoreBoilerplate, {
 
   dispatchToken: AppDispatcher.register(registeredCallback)
 });
-
-
-
 
 module.exports = DataStore;

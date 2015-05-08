@@ -1,9 +1,7 @@
+'use strict';
+
 var React = require('react');
 var DataStore = require('../stores/local-data-store');
-var ScrollStore = require('../stores/scroll-store');
-var LocalActions = require('../actions/local-action-creators');
-var ScrollActions = require('../actions/scroll-action-creators');
-var _ = require('lodash');
 
 function getStateFromStore(gridId){
   return {
@@ -13,14 +11,14 @@ function getStateFromStore(gridId){
 
 module.exports = React.createClass({
   getDefaultProps: function() {
-    return{
-      "position": "left",
-      "header": false
+    return {
+      'position': 'left',
+      'header': false
     };
   },
   render: function(){
     var spacerColumnStyle = {
-      width: (this.props.position === "left" ? this.state.columnProperties.getLeftHiddenColumnWidth() : this.state.columnProperties.getRightHiddenColumnWidth()) + "px"
+      width: (this.props.position === 'left' ? this.state.columnProperties.getLeftHiddenColumnWidth() : this.state.columnProperties.getRightHiddenColumnWidth()) + 'px'
     };
 
     return this.props.header ? (<th key={this.props.position + '-' + spacerColumnStyle.width} style={spacerColumnStyle}></th>) : (

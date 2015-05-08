@@ -1,9 +1,8 @@
+'use strict';
+
 var React = require('react');
 var DataStore = require('../stores/local-data-store');
 var ScrollStore = require('../stores/scroll-store');
-var LocalActions = require('../actions/local-action-creators');
-var ScrollActions = require('../actions/scroll-action-creators');
-var _ = require('lodash');
 
 function getStateFromStore(gridId){
   var pageProperties = DataStore.getPageProperties(gridId);
@@ -11,7 +10,7 @@ function getStateFromStore(gridId){
   return {
     rowHeight: ScrollStore.getRowHeight(gridId),
     visibleDataLength: DataStore.getVisibleData(gridId).length,
-    initialDisplayIndex: pageProperties.initialDisplayIndex, 
+    initialDisplayIndex: pageProperties.initialDisplayIndex,
     lastDisplayIndex: pageProperties.lastDisplayIndex,
     infiniteScroll: pageProperties.infiniteScroll
   };
@@ -19,20 +18,20 @@ function getStateFromStore(gridId){
 
 module.exports = React.createClass({
   getDefaultProps: function() {
-    return{
-      "position": "top"
+    return {
+      'position': 'top'
     };
   },
   render: function(){
     var height = 0, spacerRowStyle = {};
     if (this.state.infiniteScroll) {
       // Get the length of rows that the spacer row will represent.
-      var spacerRowCount = this.props.position === "top" ? this.state.initialDisplayIndex :
+      var spacerRowCount = this.props.position === 'top' ? this.state.initialDisplayIndex :
         this.state.visibleDataLength - this.state.lastDisplayIndex;
 
       // Get the height in pixels.
       height = this.state.rowHeight * spacerRowCount;
-      spacerRowStyle.height = height + "px";
+      spacerRowStyle.height = height + 'px';
     }
 
     return (
