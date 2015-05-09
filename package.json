@@ -6,15 +6,19 @@
   "scripts": {
     "test": "karma start --browsers PhantomJS",
     "start": "node server.js",
-    "test-debug": "karma start --browsers Chrome"
+    "test-debug": "karma start --browsers Chrome",
+    "lint": "./node_modules/.bin/eslint js"
   },
   "author": "Ryan Lanciaux && Joel Lanciaux",
   "license": "MIT",
   "devDependencies": {
     "babel": "~4.7.16",
     "babel-core": "~4.7.16",
+    "babel-eslint": "^3.1.1",
     "babel-loader": "~4.2.0",
     "coffee-script": "^1.9.2",
+    "eslint": "^0.20.0",
+    "eslint-plugin-react": "^2.2.0",
     "jasmine-core": "^2.2.0",
     "jsx-loader": "~0.12.2",
     "karma": "^0.12.31",
